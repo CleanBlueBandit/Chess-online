@@ -10,8 +10,8 @@ router.post('/register', async (req, res, next) => {
         const { username, password } = req.body;
 
         if (!username || !password) {
-            return res.status(400).json({
-                error: 'Username and password are required'
+            return res.status(400).json({ ok: false,
+                message: 'Username and password are required'
             });
         }
 
@@ -22,11 +22,11 @@ router.post('/register', async (req, res, next) => {
             select: { id: true, username: true }
         });
 
-        res.status(201).json(user);
+        res.status(201).json({ok : true, message : "User created successfully"});
     } catch (err) {
         if (err.code === 'P2002') {
-            return res.status(409).json({
-                error: 'Username already exists'
+            return res.status(409).json({ ok: false,
+                message: 'Username already exists'
             });
         }
 
@@ -43,8 +43,8 @@ router.post('/login', async (req, res, next) => {
         });
 
         if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-            return res.status(401).json({
-                error: 'Invalid username or password'
+            return res.status(401).json({ ok:false,
+                message: 'Invalid username or password'
             });
         }
 
@@ -56,13 +56,7 @@ router.post('/login', async (req, res, next) => {
             req.session.save((err) => {
                 if (err) return next(err);
 
-                res.json({
-                    success: true,
-                    user: {
-                        id: user.id,
-                        username: user.username
-                    }
-                });
+                res.json({ok: true, message : "User created successfully"});
             });
         });
     } catch (err) {

@@ -8,3 +8,7 @@ const __dirname = path.dirname(__filename);
 export function sendPublic(_path){
     return path.join(__dirname, "public", _path)
 }
+
+export function sendPrivate(_path){
+    return path.join(__dirname, "private-assets",  _path)
+}
