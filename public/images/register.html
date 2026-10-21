@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-center">
+  <form id="form" class="card card-narrow">
+    <h1>Register</h1>
+    <label>Username
+      <input name="username" type="text" autocomplete="username" required autofocus>
+    </label>
+    <label>Password
+      <input name="password" type="password" autocomplete="new-password" required>
+    </label>
+    <button type="submit">Register</button>
+    <p id="message" class="form-message" role="alert"></p>
+    <p class="form-footer">Already have an account? <a href="login.html">Log in</a></p>
+  </form>
+
+<script>
+const form = document.getElementById('form');
+const message = document.getElementById('message');
+const button = form.querySelector('button');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  message.textContent = '';
+  button.disabled = true;
+
+  const body = {
+    username: form.username.value,
+    password: form.password.value
+  };
+
+  try {
+    const res = await fetch('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      window.location.href = '/dashboard';
+    } else {
+      message.textContent = data.message;
+    }
+  } catch (err) {
+    message.textContent = 'Could not reach the server.';
+  } finally {
+    button.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
