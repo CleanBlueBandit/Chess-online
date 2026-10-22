@@ -12,6 +12,7 @@ import authRouter from './routes/auth.js';
 import session from 'express-session';
 import pagesRouter from './routes/pages.js';
 import { authenticate, requestLogger } from './routes/middleware.js';
+import srcRouter from './routes/resources.js'
 //#endregion
 
 //#region Middleware
@@ -25,8 +26,6 @@ const io = new Server(httpServer);
 app.use(requestLogger);
 app.use('/css/auth', authenticate, express.static(path.join(__dirname, 'private-assets/css')));
 app.use('/js/auth', authenticate, express.static(path.join(__dirname, 'private-assets/js')));
-app.use('/js', express.static(path.join(__dirname, 'public/js')));
-app.use('/css', express.static(path.join(__dirname, 'public/css')));
 
 
 
@@ -46,8 +45,10 @@ app.use(session({
     }
 }));
 
+app.use('/src', srcRouter);
 app.use('/auth', authRouter);
 app.use('/', pagesRouter);
+
 
 
 const baseUrl = `${process.env.PROTOCOL}://${process.env.HOSTNAME}:${process.env.PORT}`

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { authenticate } from './middleware.js';
-import { sendPrivate, sendPublic } from '../helpers.js';
+import { sendPublic } from '../helpers.js';
 
 const router = Router();
 
@@ -10,21 +10,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
-
 router.get("/", (req, res) => {
-    res.sendFile(sendPublic("images/index.html"));
+    res.sendFile(sendPublic("index.html"));
 })
 
 router.get('/dashboard', authenticate, (req, res) => {
-    res.sendFile(sendPrivate("images/dashboard.html"));
+    res.sendFile(sendPrivate("dashboard.html"));
 });
 
 router.get("/login", (req, res) => {
-    res.sendFile(sendPublic("images/login.html"));
+    res.sendFile(sendPublic("login.html"));
 })
 
 router.get("/register", (req, res) => {
-    res.sendFile(sendPublic("images/register.html"));
+    res.sendFile(sendPublic("register.html"));
 })
 
 

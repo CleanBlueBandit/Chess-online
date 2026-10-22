@@ -1,10 +1,4 @@
-/* ==========================================================================
-   Chess site: general stylesheet
-   Lime + gray, dark by default, light via prefers-color-scheme or
-   <html data-theme="light"> / <html data-theme="dark">
-   ========================================================================== */
 
-/* ---------- Tokens ---------- */
 :root {
   /* Gray scale */
   --gray-950: #1f1d1b;
