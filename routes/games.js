@@ -1,9 +1,9 @@
-
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import prisma from '../db/prisma.js';
-import { authenticateReturn } from './middleware.js';
+import { authenticateReturn, authenticate } from './middleware.js';
 import { notifyMatchFound } from '../ws/socket.js';
+import { errorPage, errorStatusCode, respondWithStatusCode } from '../error/errorpage.js';
 
 const router = Router();
 
@@ -15,6 +15,28 @@ const startLimiter = rateLimit({
     message: {
         ok: false,
         message: 'Too many game start attempts, try again later.'
+    }
+});
+
+const cancelLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 10,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+        ok: false,
+        message: 'Too many cancel attempts, try again later.'
+    }
+});
+
+const gameLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 50,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+        ok: false,
+        message: 'Too many game access attempts, try again later'
     }
 });
 
@@ -137,5 +159,73 @@ router.post('/start', startLimiter, authenticateReturn, async (req, res) => {
         });
     }
 });
+
+router.post('/cancel', cancelLimiter, authenticateReturn, async (req, res) => {
+    try {
+        const deleted = await prisma.game.deleteMany({
+            where: {
+                player1Id: req.user.id,
+                player2Id: null,
+                state: 'waiting'
+            }
+        });
+
+        if (deleted.count > 0) {
+            return res.status(200).json({
+                ok: true,
+                cancelled: true,
+                message: 'Matchmaking cancelled.'
+            });
+        }
+
+
+        const activeGame = await prisma.game.findFirst({
+            where: {
+                state: 'active',
+                OR: [
+                    { player1Id: req.user.id },
+                    { player2Id: req.user.id }
+                ]
+            }
+        });
+
+        if (activeGame) {
+            return res.status(409).json({
+                ok: false,
+                message: 'Your match has already started.',
+                game: activeGame
+            });
+        }
+
+        return res.status(200).json({
+            ok: true,
+            cancelled: false,
+            message: 'You are not searching for a game.'
+        });
+    } catch (error) {
+        console.error('Cancel matchmaking error:', error);
+
+        return res.status(500).json({
+            ok: false,
+            message: 'Failed to cancel matchmaking.'
+        });
+    }
+});
+
+
+router.get("/game/:id", gameLimiter, authenticate, async (req, res) => {
+    try {
+        const game = await prisma.game.findUniqueOrThrow({
+            where: { id: req.params.id }
+        });
+        return respondWithStatusCode(506, res);
+    } 
+    catch (err) {
+        if (err.code === 'P2025') {
+            return respondWithStatusCode(404, res);
+        }
+        throw err;
+    }
+})
 
 export default router;

@@ -477,6 +477,20 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .move:hover { background: var(--bg-hover); }
 .move.current { background: var(--accent); color: var(--on-accent); }
 
+/* ---------- Spinner ---------- */
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: var(--space-2);
+  vertical-align: -.15em;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ---------- Utilities ---------- */
 .hidden { display: none !important; }
 .sr-only {

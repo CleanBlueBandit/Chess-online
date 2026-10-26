@@ -70,6 +70,55 @@ app.get('/', (req, res) => {
 //#endregion
 
 //#region Server
+let shuttingDown = false;
+
+async function shutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    console.log(`\n${signal} received. Shutting down server...`);
+
+    // Prevent the process from hanging indefinitely.
+    const timeout = setTimeout(() => {
+        console.error('Shutdown timed out. Forcing exit.');
+        process.exit(1);
+    }, 10000);
+
+    try {
+        // Stop accepting connections and close Socket.IO clients.
+        await new Promise((resolve, reject) => {
+            io.close((err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // Delete every game from the database.
+        const result = await prisma.game.deleteMany({});
+
+        console.log(`Deleted ${result.count} games.`);
+
+        await prisma.$disconnect();
+
+        clearTimeout(timeout);
+        console.log('Server shut down successfully.');
+
+        process.exit(0);
+    } catch (error) {
+        clearTimeout(timeout);
+        console.error('Error during shutdown:', error);
+
+        await prisma.$disconnect().catch(() => {});
+        process.exit(1);
+    }
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGKILL', () => {
+    console.log("FATAL ERROR: SIGKILL received, server shutting down unexpectedly");
+});
+
 const baseUrl = `${process.env.PROTOCOL}://${process.env.HOSTNAME}:${process.env.PORT}`;
 
 httpServer.listen(process.env.PORT, () => {

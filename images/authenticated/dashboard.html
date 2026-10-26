@@ -4,8 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
+    <link rel="stylesheet" href="/src/style.css">
 </head>
-<body>
-    <h1>This is a dashboard</h1>
+<body class="page-center">
+    <section class="card card-narrow center">
+        <h1>Play chess</h1>
+        <p class="text-muted">Get matched with another player.</p>
+        <button id="find-match" type="button" class="btn btn-primary btn-lg btn-block mt-4">Find opponent</button>
+        <p id="search-status" class="text-muted mt-4 hidden" role="status">
+            <span class="spinner" aria-hidden="true"></span><span id="search-status-text"></span>
+        </p>
+        <button id="cancel-match" type="button" class="btn btn-block mt-4 hidden">Cancel search</button>
+        <p id="message" class="form-message" role="alert"></p>
+    </section>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/src/dashboard.js"></script>
 </body>
 </html>

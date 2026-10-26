@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { authenticate } from './middleware.js';
 import { sendPublic, sendPrivate} from '../helpers.js';
+import { errorStatusCode, respondWithStatusCode } from '../error/errorpage.js';
 
 const router = Router();
 
@@ -24,6 +25,10 @@ router.get("/login", (req, res) => {
 
 router.get("/register", (req, res) => {
     res.sendFile(sendPublic("register.html"));
+})
+
+router.get("/coffee", (req, res) => {
+    return respondWithStatusCode(418, res);
 })
 
 
