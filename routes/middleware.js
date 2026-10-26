@@ -1,13 +1,33 @@
+import prisma from '../db/prisma.js';
+
 let id = 0;
 
 export function authenticate(req, res, next) {
     if (!req.session?.userId) {
-        return res.status(401).json({
-            error: 'Authentication required'
-        });
+        return res.redirect(307, "/login");
     }
-
     next();
+}
+
+export async function authenticateReturn(req, res, next) {
+    try {
+        const id = req.session.userId;
+        const user = await prisma.user.findUnique({
+            where: { id }
+        });
+
+        if (!user) {
+            return res.status(401).json({
+                ok: false,
+                message: 'User not found'
+            });
+        }
+
+        req.user = user;
+        next();
+    } catch (err) {
+        next(err);
+    }
 }
 
 const useColors = Boolean(process.stdout.isTTY) &&

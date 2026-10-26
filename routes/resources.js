@@ -1,25 +1,24 @@
 import express from 'express';
-import { sendResource, fileExists } from '../helpers.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { authenticate } from './middleware.js';
 
 const router = express.Router();
 
-router.get('/{*path}', (req, res, next) => {
-    const resource = req.path.replace(/^\/+/, '');
-    const publicPath = sendResource(`public/${resource}`);
-    const authenticatedPath = sendResource(`authenticated/${resource}`);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const resourcesDir = path.join(__dirname, '..', 'resources');
 
-    if (fileExists(publicPath)) {
-        return res.sendFile(publicPath);
-    }
+router.use(express.static(path.join(resourcesDir, 'public'), {
+    dotfiles: 'ignore',
+    index: false
+}));
 
-    if (fileExists(authenticatedPath)) {
-        return authenticate(req, res, () => {
-            res.sendFile(authenticatedPath);
-        });
-    }
+router.use(authenticate, express.static(path.join(resourcesDir, 'authenticated'), {
+    dotfiles: 'ignore',
+    index: false
+}));
 
-    return res.sendStatus(404);
-});
+router.use((req, res) => res.sendStatus(404));
 
 export default router;

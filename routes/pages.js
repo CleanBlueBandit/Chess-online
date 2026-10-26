@@ -2,7 +2,7 @@ import { Router } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { authenticate } from './middleware.js';
-import { sendPublic } from '../helpers.js';
+import { sendPublic, sendPrivate} from '../helpers.js';
 
 const router = Router();
 

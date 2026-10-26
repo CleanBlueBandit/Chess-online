@@ -1,68 +1,127 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
+import rateLimit from 'express-rate-limit';
 import prisma from '../db/prisma.js';
 
 const router = Router();
 
+const USERNAME_RE = /^[A-Za-z0-9_-]{3,20}$/;
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_BYTES = 72; // bcrypt silently ignores anything past 72 bytes
+const BCRYPT_ROUNDS = 12;
 
-router.post('/register', async (req, res, next) => {
+// Compared against when the username does not exist, so a failed login
+// takes the same time whether or not the account exists (prevents user enumeration).
+const DUMMY_HASH = bcrypt.hashSync('not-a-real-password-timing-equalizer', BCRYPT_ROUNDS);
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    skipSuccessfulRequests: true,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { ok: false, message: 'Too many login attempts, try again later' }
+});
+
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { ok: false, message: 'Too many accounts created, try again later' }
+});
+
+function isString(value) {
+    return typeof value === 'string';
+}
+
+function validateRegistration(username, password) {
+    if (!isString(username) || !isString(password)) {
+        return 'Username and password are required';
+    }
+    if (!USERNAME_RE.test(username)) {
+        return 'Username must be 3-20 characters: letters, numbers, _ or -';
+    }
+    if (password.length < PASSWORD_MIN_LENGTH) {
+        return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+    }
+    if (Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) {
+        return `Password must be at most ${PASSWORD_MAX_BYTES} bytes`;
+    }
+    return null;
+}
+
+// Regenerates the session (prevents session fixation) and logs the user in.
+function startSession(req, res, next, userId, status, message) {
+    req.session.regenerate((err) => {
+        if (err) return next(err);
+
+        req.session.userId = userId;
+
+        req.session.save((err) => {
+            if (err) return next(err);
+            res.status(status).json({ ok: true, message });
+        });
+    });
+}
+
+router.post('/register', registerLimiter, async (req, res, next) => {
     try {
-        const { username, password } = req.body;
+        const { username, password } = req.body ?? {};
 
-        if (!username || !password) {
-            return res.status(400).json({ ok: false,
-                message: 'Username and password are required'
-            });
+        const error = validateRegistration(username, password);
+        if (error) {
+            return res.status(400).json({ ok: false, message: error });
         }
 
-        const passwordHash = await bcrypt.hash(password, 10);
+        const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
         const user = await prisma.user.create({
             data: { username, passwordHash },
-            select: { id: true, username: true }
+            select: { id: true }
         });
 
-        res.status(201).json({ok : true, message : "User created successfully"});
+        startSession(req, res, next, user.id, 201, 'User created successfully');
     } catch (err) {
         if (err.code === 'P2002') {
-            return res.status(409).json({ ok: false,
-                message: 'Username already exists'
-            });
+            return res.status(409).json({ ok: false, message: 'Username already exists' });
         }
-
         next(err);
     }
 });
 
-
-router.post('/login', async (req, res, next) => {
+router.post('/login', loginLimiter, async (req, res, next) => {
     try {
-        const { username, password } = req.body;
+        const { username, password } = req.body ?? {};
 
-        const user = await prisma.user.findUnique({
-            where: { username }
-        });
+        const invalid = () => res.status(401).json({ ok: false, message: 'Invalid username or password' });
 
-        if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-            return res.status(401).json({ ok:false,
-                message: 'Invalid username or password'
-            });
+        if (!isString(username) || !isString(password) ||
+            username.length > 20 || Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) {
+            return invalid();
         }
 
-        req.session.regenerate((err) => {
-            if (err) return next(err);
+        const user = await prisma.user.findUnique({ where: { username } });
 
-            req.session.userId = user.id;
+        // Always run bcrypt, even for unknown users, so response times are equal.
+        const passwordOk = await bcrypt.compare(password, user ? user.passwordHash : DUMMY_HASH);
 
-            req.session.save((err) => {
-                if (err) return next(err);
+        if (!user || !passwordOk) {
+            return invalid();
+        }
 
-                res.json({ok: true, message : "User created successfully"});
-            });
-        });
+        startSession(req, res, next, user.id, 200, 'Logged in successfully');
     } catch (err) {
         next(err);
     }
+});
+
+router.post('/logout', (req, res, next) => {
+    req.session.destroy((err) => {
+        if (err) return next(err);
+        res.clearCookie('sid');
+        res.json({ ok: true, message: 'Logged out' });
+    });
 });
 
 export default router;

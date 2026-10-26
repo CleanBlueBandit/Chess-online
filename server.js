@@ -1,18 +1,18 @@
 //#region Imports
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import bcrypt from 'bcrypt';
+import { createServer } from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import 'dotenv/config';
 import { sendPublic } from './helpers.js';
 import authRouter from './routes/auth.js';
 import session from 'express-session';
 import pagesRouter from './routes/pages.js';
 import { authenticate, requestLogger } from './routes/middleware.js';
-import srcRouter from './routes/resources.js'
+import srcRouter from './routes/resources.js';
+import gamesRouter from './routes/games.js';
+import { initSocket } from './ws/socket.js';
 //#endregion
 
 //#region Middleware
@@ -21,18 +21,25 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer);
 
 app.use(requestLogger);
-app.use('/css/auth', authenticate, express.static(path.join(__dirname, 'private-assets/css')));
-app.use('/js/auth', authenticate, express.static(path.join(__dirname, 'private-assets/js')));
 
+app.use(
+    '/css/auth',
+    authenticate,
+    express.static(path.join(__dirname, 'private-assets/css'))
+);
 
+app.use(
+    '/js/auth',
+    authenticate,
+    express.static(path.join(__dirname, 'private-assets/js'))
+);
 
 app.use(express.json());
 app.use(cookieParser());
 
-app.use(session({
+const sessionMiddleware = session({
     name: 'sid',
     secret: process.env.SESSION_SECRET,
     resave: false,
@@ -43,22 +50,29 @@ app.use(session({
         sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000
     }
-}));
+});
 
-app.use('/src', srcRouter);
-app.use('/auth', authRouter);
-app.use('/', pagesRouter);
+app.use(sessionMiddleware);
 
-
-
-const baseUrl = `${process.env.PROTOCOL}://${process.env.HOSTNAME}:${process.env.PORT}`
-httpServer.listen(process.env.PORT, () => {
-    console.log(`Server listening at ${baseUrl}`);
-})
+initSocket(httpServer, sessionMiddleware);
 
 //#endregion
 
+//#region Routes
+app.use('/src', srcRouter);
+app.use('/auth', authRouter);
+app.use('/', pagesRouter);
+app.use('/games', gamesRouter);
 
-app.get("/", (req, res) => {
-    return res.sendFile(sendPublic("index.html"));
-})
+app.get('/', (req, res) => {
+    return res.sendFile(sendPublic('index.html'));
+});
+//#endregion
+
+//#region Server
+const baseUrl = `${process.env.PROTOCOL}://${process.env.HOSTNAME}:${process.env.PORT}`;
+
+httpServer.listen(process.env.PORT, () => {
+    console.log(`Server listening at ${baseUrl}`);
+});
+//#endregion
