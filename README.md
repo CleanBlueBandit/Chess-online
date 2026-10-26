@@ -121,7 +121,7 @@ Players can leave the queue with **Cancel search** (`POST /games/cancel`).
 | POST | `/auth/logout` | Session | Destroy the session |
 | POST | `/games/start` | Session | Join the queue or get matched. Limit: 10/min |
 | POST | `/games/cancel` | Session | Leave the queue. Limit: 10/min |
-| GET | `/games/game/:id` | Session | Game page (placeholder, see Status) |
+| GET | `/games/game/:id` | Session | Game page |
 | GET | `/dashboard` | Session | Matchmaking page |
 
 **Socket.IO event** (server to client): `match_found` with `{ gameId, player1Id, player2Id }`. Connections without a valid session are rejected with `Unauthorized`.
