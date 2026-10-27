@@ -15,6 +15,7 @@ import gamesRouter from './routes/games.js';
 import { requestLogger } from './routes/middleware.js';
 import { initSocket, io } from './ws/socket.js';
 import prisma from './db/prisma.js';
+import { disposeAllGames } from './game/manager.js';
 
 //#region Setup
 const __filename = fileURLToPath(import.meta.url);
@@ -106,6 +107,9 @@ async function shutdown(signal) {
                 });
             });
         }
+
+        // Stop all game clocks before touching the database.
+        disposeAllGames();
 
         // Delete every game from the database.
         const result = await prisma.game.deleteMany({});

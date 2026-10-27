@@ -5,6 +5,7 @@ import { authenticateReturn, authenticate } from './middleware.js';
 import { notifyMatchFound } from '../ws/socket.js';
 import { respondWithStatusCode } from '../error/errorpage.js';
 import { sendPrivate } from '../helpers.js';
+import { getGame } from '../game/manager.js';
 
 const router = Router();
 
@@ -216,9 +217,20 @@ router.post('/cancel', cancelLimiter, authenticateReturn, async (req, res) => {
 
 router.get("/game/:id", gameLimiter, authenticate, async (req, res) => {
     try {
+        // Finished games stay in memory for a while after their DB row is gone.
+        if (getGame(req.params.id)) {
+            return res.sendFile(sendPrivate("game.html"));
+        }
+
         const game = await prisma.game.findUniqueOrThrow({
             where: { id: req.params.id }
         });
+
+        // Still waiting for an opponent: back to the queue page.
+        if (game.state !== 'active') {
+            return res.redirect('/dashboard');
+        }
+
         return res.sendFile(sendPrivate("game.html"));
     } 
     catch (err) {

@@ -1,7 +1,9 @@
 /*
  * Game page client.
  *
- * WebSocket endpoint:  /ws/game/<gameId>   (gameId from ?id= or the last path segment)
+ * Transport: Socket.IO (global `io`, loaded by game.html). The page emits "join" with the
+ * gameId (last path segment) on every (re)connect, then exchanges the JSON messages below
+ * in both directions using the single event name "msg".
  *
  * CLIENT -> SERVER
  *   {type:"move", from, to, promotion?, ply, fen}   ply = index of this move (1-based), fen = position after it
@@ -46,7 +48,8 @@ const S = {
 const board = $("board");
 const sqEls = new Map();
 const live = () => S.view === S.fens.length - 1;
-const wsOpen = () => ws?.readyState === WebSocket.OPEN;
+const socket = io();
+const wsOpen = () => socket.connected;
 
 /* ---------------- Board ---------------- */
 function buildBoard() {
@@ -280,6 +283,10 @@ function endGame(result, reason) {
     result === "*" || reason === "aborted" ? "Game aborted."
     : who ? `${who} by ${reason}.`
     : `Draw by ${reason}.`;
+  const back = document.createElement("a");
+  back.href = "/dashboard";
+  back.textContent = "Back to dashboard";
+  el.append(" ", back);
   el.hidden = false;
 }
 
@@ -316,29 +323,31 @@ const handlers = {
     renderAll();
   },
 
-  error(m) { notify(m.message || "Something went wrong."); },
+  error(m) {
+    notify(m.message || "Something went wrong.");
+    if (m.fatal) setTimeout(() => (location.href = "/dashboard"), 2500);
+  },
 };
 
-/* ---------------- WebSocket ---------------- */
-let ws, retry = 0;
-function connect() {
-  const proto = location.protocol === "https:" ? "wss" : "ws";
-  ws = new WebSocket(`${proto}://${location.host}/ws/game/${encodeURIComponent(gameId)}`);
-  ws.onopen = () => { retry = 0; $("conn").hidden = true; };
-  ws.onmessage = (e) => {
-    let m;
-    try { m = JSON.parse(e.data); } catch { return; }
-    handlers[m.type]?.(m);
-  };
-  ws.onclose = () => {
-    if (S.over) return;
-    $("conn").hidden = false;
-    setTimeout(connect, Math.min(1000 * 2 ** retry++, 10000)); // server resends "state" on reconnect
-  };
-}
+/* ---------------- Socket.IO ---------------- */
+// The server answers "join" with a full "state", so reconnects resync automatically.
+socket.on("connect", () => {
+  $("conn").hidden = true;
+  socket.emit("join", gameId);
+});
+socket.on("disconnect", () => {
+  if (!S.over) $("conn").hidden = false;
+});
+socket.on("connect_error", (err) => {
+  if (err.message === "Unauthorized") location.href = "/login";
+  else if (!S.over) $("conn").hidden = false;
+});
+socket.on("msg", (m) => {
+  if (m && typeof m === "object") handlers[m.type]?.(m);
+});
 function send(obj) {
   if (!wsOpen()) { notify("Connection lost. Reconnecting…"); return false; }
-  ws.send(JSON.stringify(obj));
+  socket.emit("msg", obj);
   return true;
 }
 
@@ -452,4 +461,3 @@ addEventListener("keydown", (e) => {
 
 buildBoard();
 renderAll();
-connect();

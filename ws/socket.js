@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { registerGameHandlers } from './gameSocket.js';
 
 export let io;
 
@@ -22,6 +23,7 @@ export function initSocket(httpServer, sessionMiddleware) {
 
     io.on('connection', (socket) => {
         socket.join(`user:${socket.data.userId}`);
+        registerGameHandlers(io, socket);
 
         console.log(`Socket connected for user ${socket.data.userId}`);
 
