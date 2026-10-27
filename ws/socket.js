@@ -1,7 +1,6 @@
-
 import { Server } from 'socket.io';
 
-let io;
+export let io;
 
 export function initSocket(httpServer, sessionMiddleware) {
     io = new Server(httpServer);

@@ -3,7 +3,8 @@ import rateLimit from 'express-rate-limit';
 import prisma from '../db/prisma.js';
 import { authenticateReturn, authenticate } from './middleware.js';
 import { notifyMatchFound } from '../ws/socket.js';
-import { errorPage, errorStatusCode, respondWithStatusCode } from '../error/errorpage.js';
+import { respondWithStatusCode } from '../error/errorpage.js';
+import { sendPrivate } from '../helpers.js';
 
 const router = Router();
 
@@ -218,7 +219,7 @@ router.get("/game/:id", gameLimiter, authenticate, async (req, res) => {
         const game = await prisma.game.findUniqueOrThrow({
             where: { id: req.params.id }
         });
-        return respondWithStatusCode(506, res);
+        return res.sendFile(sendPrivate("game.html"));
     } 
     catch (err) {
         if (err.code === 'P2025') {

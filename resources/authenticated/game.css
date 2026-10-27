@@ -1,0 +1,29 @@
+/* Game page additions only; base styles come from /src/style.css */
+.board-wrap { position: relative; width: min(100%, 640px); }
+.board-wrap .board { --size: 100%; }
+.square { container-type: size; }
+.piece {
+  display: grid; place-items: center; cursor: default;
+  font: 400 82cqw/1 "Segoe UI Symbol", "Noto Sans Symbols 2", "Apple Symbols", sans-serif;
+}
+.piece[data-own="1"] { cursor: grab; }
+.piece[data-color="w"] { color: #fff; text-shadow: 0 0 1px #000, 0 0 2px #000, 0 1px 2px rgba(0,0,0,.6); }
+.piece[data-color="b"] { color: #1a1a1a; text-shadow: 0 0 1px rgba(255,255,255,.35); }
+
+.promo {
+  position: absolute; inset: 0; z-index: 5; display: grid; place-items: center;
+  background: rgba(0,0,0,.45); border-radius: var(--radius-sm);
+}
+.promo[hidden] { display: none; }
+.promo-choices {
+  display: flex; gap: var(--space-2); padding: var(--space-3);
+  background: var(--bg-raised); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+}
+.promo-choices button { width: 4.5rem; height: 4.5rem; font-size: 3rem; line-height: 1; background: var(--square-light); }
+.promo-choices button:hover { background: var(--accent); }
+
+.side-panel { padding: 0; overflow: hidden; }
+.side-body { padding: var(--space-4); }
+.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.actions .btn { flex: 1; }
+.move-list { min-height: 120px; }
