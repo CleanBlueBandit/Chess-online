@@ -22,6 +22,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+app.set('trust proxy', 1);
 const httpServer = createServer(app);
 
 const { Pool } = pg;
@@ -90,7 +92,6 @@ async function shutdown(signal) {
     }, 10000);
 
     try {
-        // Stop accepting new HTTP connections and close Socket.IO.
         await new Promise((resolve, reject) => {
             io.close((err) => {
                 if (err) reject(err);
@@ -98,7 +99,6 @@ async function shutdown(signal) {
             });
         });
 
-        // Close the HTTP server if it is still listening.
         if (httpServer.listening) {
             await new Promise((resolve, reject) => {
                 httpServer.close((err) => {
@@ -108,18 +108,14 @@ async function shutdown(signal) {
             });
         }
 
-        // Stop all game clocks before touching the database.
         disposeAllGames();
 
-        // Delete every game from the database.
         const result = await prisma.game.deleteMany({});
         console.log(`Deleted ${result.count} games.`);
 
-        // Close the session store and its PostgreSQL pool.
         await sessionStore.close();
         await pgPool.end();
 
-        // Disconnect Prisma.
         await prisma.$disconnect();
 
         clearTimeout(timeout);
